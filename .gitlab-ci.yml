@@ -1,0 +1,8 @@
+---
+stages:
+  - test
+
+.go_template_defaults:
+  stage: test
+include:
+  - { project: fsrvcorp/templates, file: templates/language/go.yml, ref: 1.0.9 }
