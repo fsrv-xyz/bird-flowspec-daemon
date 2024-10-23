@@ -17,7 +17,7 @@ include:
 
 packages:
   stage: release
-  image: goreleaser/goreleaser
+  image: goreleaser/goreleaser@sha256:d62b4a18dfe3af7bd4da9e5954b496548ef04e73ae8f98cd75ba63a9ed4d73e5
   script:
     - goreleaser release --skip publish --snapshot --clean
   artifacts:
@@ -26,7 +26,7 @@ packages:
 
 deb mirror:
   stage: release
-  image: alpine
+  image: alpine@sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367effd16dc0d06d
   dependencies:
     - packages
   needs:
