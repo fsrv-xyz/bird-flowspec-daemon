@@ -9,13 +9,13 @@ __check_defined = \
     $(if $(value $1),, \
       $(error Undefined $1$(if $2, ($2))))
 
-build: export CGO_ENABLED=0
-build: export GOOS=linux
-build:
+build-bin: export CGO_ENABLED=0
+build-bin: export GOOS=linux
+build-bin:
 	mkdir -p $(BUILD_DIR)
 	go build -ldflags '-s -w' -trimpath -o $(BUILD_DIR)/main .
 
-sync: build
+sync: build-bin
 	$(call check_defined,REMOTE)
 	rsync -avz -e "ssh $(SSH_ARGS)" --delete $(BUILD_DIR)/main $(REMOTE):$(REMOTE_PATH)
 
