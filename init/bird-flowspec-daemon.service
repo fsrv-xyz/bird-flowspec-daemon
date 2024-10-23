@@ -1,0 +1,17 @@
+[Unit]
+Description=BIRD Internet Routing Daemon FlowSpec Daemon
+StartLimitIntervalSec=30s
+StartLimitBurst=3
+
+[Service]
+Restart=on-failure
+RestartSec=5s
+User=root
+EnvironmentFile=-/etc/default/bird-flowspec-daemon
+ExecStart=/usr/bin/bird-flowspec-daemon $ARGS
+ExecReload=/bin/kill -HUP $MAINPID
+TimeoutStopSec=20s
+SendSIGKILL=no
+
+[Install]
+WantedBy=multi-user.target
