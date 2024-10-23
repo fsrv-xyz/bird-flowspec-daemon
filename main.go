@@ -28,6 +28,9 @@ import (
 )
 
 func birdCommand(ctx context.Context, command string) (string, error) {
+	defer func(start time.Time) {
+		metrics.BirdSocketQueryDurationSeconds.Observe(time.Since(start).Seconds())
+	}(time.Now())
 	slog.Debug("Reading BIRD rules", slog.String("command", command))
 	defer func() {
 		slog.Debug("Finished reading BIRD rules", slog.String("command", command))
