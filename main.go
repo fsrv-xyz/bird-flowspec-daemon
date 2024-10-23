@@ -164,7 +164,7 @@ func main() {
 			slog.Info("Shutting down")
 			return
 		case <-ticker.C:
-			rawRoutes := strings.Split(birdCommand("show route where (net.type = NET_FLOW4 || net.type = NET_FLOW6) all"), "flow")
+			rawRoutes := strings.Split(birdCommand("show route where ((net.type = NET_FLOW4 || net.type = NET_FLOW6) && source = RTS_BGP) all"), "flow")
 
 			var nftRules []*nftables.Rule
 
