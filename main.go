@@ -196,6 +196,16 @@ func main() {
 				nftRules = append(nftRules, rule)
 			}
 
+			// get the current number of rules in the nftables chain
+			existingRules, getRulesError := nft.GetRules(table, chain)
+			if getRulesError != nil {
+				slog.Error("error getting existing rules", slog.String("error", getRulesError.Error()))
+			}
+			if len(existingRules) != len(nftRules) {
+				slog.Info("number of rules in nftables chain does not match, reapplying all rules")
+				lastChecksum = [16]byte{}
+			}
+
 			checksum := rulesum.CheckSum(nftRules)
 			if checksum == lastChecksum {
 				slog.Debug("Checksums match, skipping nftables update", slog.String("checksum", fmt.Sprintf("%x", checksum)))
