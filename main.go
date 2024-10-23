@@ -3,9 +3,9 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -27,56 +27,55 @@ import (
 	"bird-flowspec-daemon/internal/rulesum"
 )
 
-// Buffered io Reader
-func bufferedRead(reader io.Reader) string {
-	slog.Debug("Reading from BIRD socket")
-	buf := make([]byte, 0, 4096)
-	tmp := make([]byte, 32)
-	for {
-		n, err := reader.Read(tmp)
-		if err != nil {
-			slog.Error("read error: %s\n", slog.String("error", err.Error()))
-			panic(err)
-		}
-		buf = append(buf, tmp[:n]...)
-		// TODO: check why is stuck with trailing newline character
-		if strings.Contains(string(tmp), "0000 ") {
-			return string(buf)
-		}
-	}
-}
+func birdCommand(ctx context.Context, command string) (string, error) {
+	slog.Debug("Reading BIRD rules", slog.String("command", command))
+	defer func() {
+		slog.Debug("Finished reading BIRD rules", slog.String("command", command))
+	}()
 
-// TODO: implement error handling
-func birdCommand(command string) string {
-	defer func(start time.Time) {
-		elapsed := time.Since(start)
-		metrics.BirdSocketQueryDurationSeconds.Observe(elapsed.Seconds())
-	}(time.Now())
-
-	slog.Debug("Connecting to BIRD socket")
+	// Connect to the Bird socket
 	conn, err := net.Dial("unix", config.birdSocketPath)
 	if err != nil {
-		slog.Error("BIRD socket connect: %v", slog.String("error", err.Error()))
-		panic(err)
+		return "", fmt.Errorf("failed to connect to bird socket: %v", err)
 	}
-	//goland:noinspection ALL
 	defer conn.Close()
 
-	slog.Debug("Connected to BIRD socket")
-	//connResp := bufferedRead(conn)
-	//if !strings.HasSuffix(connResp, "ready.\n") {
-	//	log.Fatalf("BIRD connection response: %s", connResp)
-	//}
+	// Create a channel to handle the scanner
+	done := make(chan struct{})
+	var response strings.Builder
+	errChan := make(chan error, 1)
 
-	slog.Debug("Sending BIRD command", slog.String("command", command))
-	_, err = conn.Write([]byte(strings.Trim(command, "\n") + "\n"))
-	slog.Debug("Sent BIRD command", slog.String("command", command))
+	// Send the command to retrieve all routes
+	_, err = conn.Write([]byte(fmt.Sprintf("%s\n", command)))
 	if err != nil {
-		slog.Error("BIRD command write: %v", slog.String("error", err.Error()))
-		panic(err)
+		return "", fmt.Errorf("failed to write to bird socket: %v", err)
 	}
 
-	return bufferedRead(conn)
+	go func() {
+		scanner := bufio.NewScanner(conn)
+		for scanner.Scan() {
+			line := scanner.Text()
+			response.WriteString(line + "\n")
+			if strings.HasPrefix(line, "0000 ") {
+				break
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			errChan <- fmt.Errorf("error reading from bird socket: %v", err)
+		} else {
+			close(done)
+		}
+	}()
+
+	// Wait for either the context to be done or the reading to complete
+	select {
+	case <-ctx.Done():
+		return "", fmt.Errorf("operation canceled: %v", ctx.Err())
+	case err := <-errChan:
+		return "", err
+	case <-done:
+		return response.String(), nil
+	}
 }
 
 type configuration struct {
@@ -164,7 +163,15 @@ func main() {
 			slog.Info("Shutting down")
 			return
 		case <-ticker.C:
-			rawRoutes := strings.Split(birdCommand("show route where ((net.type = NET_FLOW4 || net.type = NET_FLOW6) && source = RTS_BGP) all"), "flow")
+			timeoutCtx, cancel := context.WithTimeout(ctx, config.interval)
+			response, commandError := birdCommand(timeoutCtx, "show route where ((net.type = NET_FLOW4 || net.type = NET_FLOW6) && source = RTS_BGP) all")
+			if commandError != nil {
+				slog.Error("error running bird command", slog.String("error", commandError.Error()))
+				continue
+			}
+
+			rawRoutes := strings.Split(response, "flow")
+			cancel()
 
 			var nftRules []*nftables.Rule
 
