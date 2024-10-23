@@ -5,8 +5,15 @@ stages:
 
 .go_template_defaults:
   stage: test
+.semver_template_defaults:
+  stage: release
 include:
-  - { project: fsrvcorp/templates, file: templates/language/go.yml, ref: 1.0.9 }
+  - project: fsrvcorp/templates
+    file: templates/language/go.yml
+    ref: 1.0.9
+  - project: fsrvcorp/templates
+    file: templates/release/semver.yml
+    ref: 1.0.9
 
 packages:
   stage: release
