@@ -119,8 +119,8 @@ func main() {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	go func() {
-		<-ch
-		slog.Info("Received termination, signaling shutdown")
+		terminationSignal := <-ch
+		slog.Info("Received termination, signaling shutdown", slog.String("signal", terminationSignal.String()))
 		cancel()
 	}()
 
@@ -160,7 +160,7 @@ func main() {
 		panic(err)
 	}
 
-	lastChecksum := [16]byte{}
+	var lastChecksum [16]byte
 
 	ticker := time.NewTicker(config.interval)
 
