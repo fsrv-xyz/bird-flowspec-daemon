@@ -1,6 +1,8 @@
 package route
 
-import "testing"
+import (
+	"testing"
+)
 
 func Test_parseIEEE754Float(t *testing.T) {
 	type args struct {
