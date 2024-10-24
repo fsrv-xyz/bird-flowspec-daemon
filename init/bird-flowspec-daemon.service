@@ -11,6 +11,7 @@ EnvironmentFile=-/etc/default/bird-flowspec-daemon
 ExecStart=/usr/bin/bird-flowspec-daemon $ARGS
 ExecReload=/bin/kill -HUP $MAINPID
 TimeoutStopSec=10s
+Nice=-10
 
 [Install]
 WantedBy=multi-user.target
