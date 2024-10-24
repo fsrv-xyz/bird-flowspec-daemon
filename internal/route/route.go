@@ -25,14 +25,12 @@ type FlowspecRoute struct {
 	Argument     int64
 }
 
-// RFC 5575
-// 0x8006, traffic-rate, 2-byte as#, 4-byte float
-// 0x8007, traffic-action, bitmask
-// 0x8008, redirect, 6-byte Route Target
-// 0x8009, traffic-marking, DSCP value
+// See rfc 8955
+// https://datatracker.ietf.org/doc/html/rfc8955#traffic_extended_communities
 const (
-	ActionTrafficRate    = 0x8006
-	ActionTrafficAction  = 0x8007
-	ActionRedirect       = 0x8008
-	ActionTrafficMarking = 0x8009
+	ActionTrafficRateBytes   = 0x8006
+	ActionTrafficRatePackets = 0x800c
+	ActionTrafficAction      = 0x8007
+	ActionRedirect           = 0x8008
+	ActionTrafficMarking     = 0x8009
 )

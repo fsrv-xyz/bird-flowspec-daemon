@@ -134,19 +134,27 @@ func BuildRuleExpressions(flowSpecRoute route.FlowspecRoute, enableCounter bool)
 
 	// Handle the action
 	switch flowSpecRoute.Action {
-	case route.ActionTrafficRate:
+	case route.ActionTrafficRateBytes, route.ActionTrafficRatePackets:
 		if flowSpecRoute.Argument == 0x0 { // Drop traffic (rate limit to zero)
 			expressions = append(expressions, &expr.Verdict{
 				Kind: expr.VerdictDrop,
 			})
 		}
 		if flowSpecRoute.Argument > 0x0 { // Rate limit traffic
+			var limitType expr.LimitType
+			switch flowSpecRoute.Action {
+			case route.ActionTrafficRateBytes:
+				limitType = expr.LimitTypePktBytes
+			case route.ActionTrafficRatePackets:
+				limitType = expr.LimitTypePkts
+			}
 			expressions = append(expressions, &expr.Limit{
-				Burst: 0,
-				Rate:  uint64(flowSpecRoute.Argument),
-				Over:  true,
-				Unit:  expr.LimitTimeSecond,
+				Type: limitType,
+				Rate: uint64(flowSpecRoute.Argument),
+				Over: true,
+				Unit: expr.LimitTimeSecond,
 			})
+
 			if enableCounter {
 				expressions = append(expressions, &expr.Counter{})
 			}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net"
 	"strconv"
 	"strings"
@@ -62,18 +63,28 @@ func parseFlowCommunity(input string) (int64, int64, error) {
 	}
 
 	// Validate action
-	if !(action == ActionTrafficRate || action == ActionTrafficAction || action == ActionRedirect || action == ActionTrafficMarking) {
+	if !(action == ActionTrafficRateBytes || action == ActionTrafficRatePackets || action == ActionTrafficAction || action == ActionRedirect || action == ActionTrafficMarking) {
 		return -1, -1, errors.New("invalid flowspec action")
 	}
 
-	// Parse argument as int
-	argPart := strings.TrimSuffix(parts[2], "0000")
-	arg, err := strconv.ParseInt(argPart, 0, 64)
-	if err != nil {
-		return -1, -1, errors.New("invalid community string: " + err.Error())
+	switch action {
+	case ActionTrafficRateBytes, ActionTrafficRatePackets:
+		// Parse argument as ieee754 float
+		argPart := parts[2]
+		arg, err := parseIEEE754Float(argPart)
+		if err != nil {
+			return -1, -1, errors.New("invalid community string: " + err.Error())
+		}
+		return action, int64(arg), nil // nil error
+	default:
+		// Parse argument as int
+		argPart := strings.TrimSuffix(parts[2], "0000")
+		arg, err := strconv.ParseInt(argPart, 0, 64)
+		if err != nil {
+			return -1, -1, errors.New("invalid community string: " + err.Error())
+		}
+		return action, arg, nil // nil error
 	}
-
-	return action, arg, nil // nil error
 }
 
 func parseMatchAttrs(input string) (matchAttrs, error) {
@@ -144,4 +155,21 @@ func parseSessionAttrs(input string) (sessionAttrs, error) {
 	outputSessionAttrs.NeighborAddress = ip
 
 	return outputSessionAttrs, nil // nil error
+}
+
+func parseIEEE754Float(hexStr string) (float32, error) {
+	// Remove any "0x" or "0X" prefix from the string
+	hexStr = strings.TrimPrefix(hexStr, "0x")
+	hexStr = strings.TrimPrefix(hexStr, "0X")
+
+	// Parse the hex string into a uint32
+	bits, err := strconv.ParseUint(hexStr, 16, 32)
+	if err != nil {
+		return 0, fmt.Errorf("invalid hex string: %v", err)
+	}
+
+	// Convert the bits into a float32 using math.Float32frombits
+	floatValue := math.Float32frombits(uint32(bits))
+
+	return floatValue, nil
 }
