@@ -128,13 +128,14 @@ func BuildRuleExpressions(flowSpecRoute route.FlowspecRoute, enableCounter bool)
 		addPortMatcher(&flowSpecRoute.MatchAttrs.DestinationPort, false)
 	}
 
+	if enableCounter {
+		expressions = append(expressions, &expr.Counter{})
+	}
+
 	// Handle the action
 	switch flowSpecRoute.Action {
 	case route.ActionTrafficRate:
 		if flowSpecRoute.Argument == 0x0 { // Drop traffic (rate limit to zero)
-			if enableCounter {
-				expressions = append(expressions, &expr.Counter{})
-			}
 			expressions = append(expressions, &expr.Verdict{
 				Kind: expr.VerdictDrop,
 			})
