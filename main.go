@@ -86,6 +86,7 @@ type configuration struct {
 	debug                bool
 	metricsListenAddress string
 	interval             time.Duration
+	enableCounter        bool
 }
 
 var config = configuration{}
@@ -93,9 +94,10 @@ var config = configuration{}
 func init() {
 	app := kingpin.New("bird-flowspec-daemon", "A BIRD flowspec daemon")
 	app.Flag("debug", "Enable debug mode").Short('d').BoolVar(&config.debug)
-	app.Flag("bird-socket", "Path to BIRD socket").Default("/run/bird/bird.ctl").ExistingFileVar(&config.birdSocketPath)
+	app.Flag("bird-socket", "Path to BIRD socket").Envar("BIRD_SOCKET_PATH").Default("/run/bird/bird.ctl").ExistingFileVar(&config.birdSocketPath)
 	app.Flag("metrics.listen-address", "Address to listen on for metrics").Default("127.0.0.1:9302").StringVar(&config.metricsListenAddress)
-	app.Flag("interval", "Interval to check for new routes").Default("10s").DurationVar(&config.interval)
+	app.Flag("interval", "Interval to check for new routes").Envar("CHECK_INTERVAL").Default("10s").DurationVar(&config.interval)
+	app.Flag("enable-counter", "Enable counter in nftables rules").Envar("ENABLE_COUNTER").Default("false").BoolVar(&config.enableCounter)
 	app.HelpFlag.Short('h')
 	kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -190,7 +192,7 @@ func main() {
 					continue
 				}
 
-				ruleExpressions, buildError := rulebuilder.BuildRuleExpressions(flowSpecRoute)
+				ruleExpressions, buildError := rulebuilder.BuildRuleExpressions(flowSpecRoute, config.enableCounter)
 				if buildError != nil {
 					slog.Warn("error building rule expressions", slog.String("error", buildError.Error()))
 					continue

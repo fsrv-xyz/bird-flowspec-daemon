@@ -10,7 +10,7 @@ import (
 	"bird-flowspec-daemon/internal/route"
 )
 
-func BuildRuleExpressions(flowSpecRoute route.FlowspecRoute) ([]expr.Any, error) {
+func BuildRuleExpressions(flowSpecRoute route.FlowspecRoute, enableCounter bool) ([]expr.Any, error) {
 	var expressions []expr.Any
 
 	addPrefixMatcher := func(ipnet *net.IPNet, isSource bool) {
@@ -126,6 +126,11 @@ func BuildRuleExpressions(flowSpecRoute route.FlowspecRoute) ([]expr.Any, error)
 	}
 	if flowSpecRoute.MatchAttrs.DestinationPort != 0 {
 		addPortMatcher(&flowSpecRoute.MatchAttrs.DestinationPort, false)
+	}
+
+	// Add a counter if enabled
+	if enableCounter {
+		expressions = append(expressions, &expr.Counter{})
 	}
 
 	// Handle the action
