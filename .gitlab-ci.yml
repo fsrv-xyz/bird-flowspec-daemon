@@ -21,9 +21,9 @@ packages:
   script:
     - |
       if [ -n "$CI_COMMIT_TAG" ]; then
-        goreleaser release --skip publish --clean --rm-dist
+        goreleaser release --skip publish --clean
       else
-        goreleaser release --skip publish --clean --rm-dist --snapshot
+        goreleaser release --skip publish --clean --snapshot
       fi
   artifacts:
     paths:
