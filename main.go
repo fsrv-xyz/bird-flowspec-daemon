@@ -113,6 +113,8 @@ func init() {
 }
 
 func main() {
+	slog.Info("Starting bird-flowspec-daemon", slog.String("configuration", fmt.Sprintf("%+v", config)))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
