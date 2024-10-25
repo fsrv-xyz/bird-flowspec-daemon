@@ -17,6 +17,7 @@ import (
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/google/nftables"
+	"github.com/google/nftables/expr"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -162,14 +163,23 @@ func main() {
 
 	var lastChecksum [16]byte
 
-	ticker := time.NewTicker(config.interval)
+	routeIntervalTicker := time.NewTicker(config.interval)
+	defer routeIntervalTicker.Stop()
+
+	if config.enableCounter {
+		if installCounterError := metrics.InstallNamedCounters(table); installCounterError != nil {
+			slog.Error("error installing named counters", slog.String("error", installCounterError.Error()))
+			panic(installCounterError)
+		}
+		go metrics.CounterMetricsWorker(ctx, table)
+	}
 
 	for {
 		select {
 		case <-ctx.Done():
 			slog.Info("Shutting down")
 			return
-		case <-ticker.C:
+		case <-routeIntervalTicker.C:
 			timeoutCtx, cancel := context.WithTimeout(ctx, config.interval)
 			response, commandError := birdCommand(timeoutCtx, "show route where ((net.type = NET_FLOW4 || net.type = NET_FLOW6) && source = RTS_BGP) all")
 			if commandError != nil {
@@ -181,6 +191,19 @@ func main() {
 			cancel()
 
 			var nftRules []*nftables.Rule
+
+			if config.enableCounter {
+				nftRules = append(nftRules, &nftables.Rule{
+					Table: table,
+					Chain: chain,
+					Exprs: []expr.Any{
+						&expr.Objref{
+							Type: int(nftables.ObjTypeCounter),
+							Name: metrics.CounterFlowSpecHandled,
+						},
+					},
+				})
+			}
 
 			for _, flowRoute := range rawRoutes {
 				// Ignore lines that aren't a valid IPv4/IPv6 flowspec route
@@ -228,7 +251,11 @@ func main() {
 			lastChecksum = checksum
 
 			slog.Info("updating nftables", slog.String("checksum", fmt.Sprintf("%x", checksum)))
-			metrics.FlowSpecRoutesTotal.Set(float64(len(nftRules)))
+			if config.enableCounter {
+				metrics.FlowSpecRoutesTotal.Set(float64(len(nftRules) - 1))
+			} else {
+				metrics.FlowSpecRoutesTotal.Set(float64(len(nftRules)))
+			}
 			nft.FlushChain(chain)
 			for _, rule := range nftRules {
 				nft.AddRule(rule)

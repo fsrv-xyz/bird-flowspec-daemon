@@ -5,10 +5,31 @@ import (
 	"errors"
 	"net"
 
+	"github.com/google/nftables"
 	"github.com/google/nftables/expr"
 
+	"bird-flowspec-daemon/internal/metrics"
 	"bird-flowspec-daemon/internal/route"
 )
+
+func actionDropExpressions(enableCounter bool) []expr.Any {
+	var expressions []expr.Any
+	if enableCounter {
+		expressions = append(expressions, []expr.Any{
+			&expr.Objref{
+				Type: int(nftables.ObjTypeCounter),
+				Name: metrics.CounterFlowSpecDropped,
+			},
+			&expr.Counter{},
+		}...)
+	}
+	// Add a drop verdict for packets exceeding the rate limit
+	expressions = append(expressions, &expr.Verdict{
+		Kind: expr.VerdictDrop,
+	})
+
+	return expressions
+}
 
 func BuildRuleExpressions(flowSpecRoute route.FlowspecRoute, enableCounter bool) ([]expr.Any, error) {
 	var expressions []expr.Any
@@ -128,19 +149,22 @@ func BuildRuleExpressions(flowSpecRoute route.FlowspecRoute, enableCounter bool)
 		addPortMatcher(&flowSpecRoute.MatchAttrs.DestinationPort, false)
 	}
 
-	if enableCounter {
-		expressions = append(expressions, &expr.Counter{})
-	}
-
 	// Handle the action
 	switch flowSpecRoute.Action {
 	case route.ActionTrafficRateBytes, route.ActionTrafficRatePackets:
 		if flowSpecRoute.Argument == 0x0 { // Drop traffic (rate limit to zero)
-			expressions = append(expressions, &expr.Verdict{
-				Kind: expr.VerdictDrop,
-			})
+			expressions = append(expressions, actionDropExpressions(enableCounter)...)
 		}
 		if flowSpecRoute.Argument > 0x0 { // Rate limit traffic
+			if enableCounter {
+				expressions = append(expressions, []expr.Any{
+					&expr.Objref{
+						Type: int(nftables.ObjTypeCounter),
+						Name: metrics.CounterFlowSpecLimitMatched,
+					},
+					&expr.Counter{},
+				}...)
+			}
 			var limitType expr.LimitType
 			switch flowSpecRoute.Action {
 			case route.ActionTrafficRateBytes:
@@ -155,17 +179,7 @@ func BuildRuleExpressions(flowSpecRoute route.FlowspecRoute, enableCounter bool)
 				Unit: expr.LimitTimeSecond,
 			})
 
-			if enableCounter {
-				expressions = append(expressions, &expr.Counter{})
-			}
-			// Add a drop verdict for packets exceeding the rate limit
-			expressions = append(expressions, &expr.Verdict{
-				Kind: expr.VerdictDrop,
-			})
-			// Accept matching packets within the rate limit; uncomment to accept packets within the rate limit
-			//expressions = append(expressions, &expr.Verdict{
-			//	Kind: expr.VerdictAccept,
-			//})
+			expressions = append(expressions, actionDropExpressions(enableCounter)...)
 		}
 	default:
 		return nil, errors.New("unsupported action type")
