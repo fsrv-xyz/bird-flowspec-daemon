@@ -17,7 +17,7 @@ include:
 
 packages:
   stage: release
-  image: goreleaser/goreleaser@sha256:1f5ae36e41ede8b994a93c66e5c1fb1b1111de2ce88f25b6378e341771ed963e
+  image: goreleaser/goreleaser@sha256:123935a56bb422aee8c7eafd9c48868d03ffc84bc599eac28251a60ee393ac57
   script:
     - git reset --hard $CI_COMMIT_SHA
     - git clean -ffdx
