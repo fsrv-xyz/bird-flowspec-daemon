@@ -10,10 +10,10 @@ stages:
 include:
   - project: fsrvcorp/templates
     file: templates/language/go.yml
-    ref: 1.0.9
+    ref: 1.0.10
   - project: fsrvcorp/templates
     file: templates/release/semver.yml
-    ref: 1.0.9
+    ref: 1.0.10
 
 packages:
   stage: release
