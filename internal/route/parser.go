@@ -24,7 +24,7 @@ func ParseFlowSpecRoute(input string) (FlowspecRoute, error) {
 		return FlowspecRoute{}, fmt.Errorf("invalid flowspec route: (%s): %v\n", header, err)
 	}
 
-	action, arg, err := parseFlowCommunity(inclusiveMatch(input, "BGP.ext_community: (", ")"))
+	action, arg, err := parseFlowCommunity(inclusiveMatch(input, "ext_community: (", ")"))
 	if err != nil {
 		return FlowspecRoute{}, fmt.Errorf("invalid flowspec route: (%s): %v\n", header, err)
 	}
