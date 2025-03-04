@@ -5,7 +5,7 @@ go 1.23.1
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/google/nftables v0.2.1-0.20240923151943-ed578af895ee
-	github.com/prometheus/client_golang v1.21.0
+	github.com/prometheus/client_golang v1.21.1
 	github.com/stretchr/testify v1.10.0
 )
 
