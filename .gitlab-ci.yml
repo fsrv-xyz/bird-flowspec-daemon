@@ -10,7 +10,7 @@ include:
   - component: $CI_SERVER_FQDN/fsrvcorp/ci-components/semver@0.1.0
 packages:
   stage: release
-  image: goreleaser/goreleaser@sha256:92b918cc587dce6321b5fafc57ba93942a38592a7fbdb6cc3e300418b9f03a7e
+  image: goreleaser/goreleaser@sha256:7077423cf5ef643ff56a34b58f93c1364e927e5c3dfa470eeabc44cab1a9c72b
   script:
     - git reset --hard $CI_COMMIT_SHA
     - git clean -ffdx
